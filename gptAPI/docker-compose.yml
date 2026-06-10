@@ -7,15 +7,9 @@ services:
     container_name: gpt-api
     ports:
       - "8003:8003"
-    env_file:
-      - .env
     volumes:
       - ./cache:/app/cache
-    environment:
-      - GPT_MODEL=${GPT_MODEL:-gpt-5-mini}
-      - GPT_TIMEOUT=${GPT_TIMEOUT:-90}
-      - VIEWER_MAX_SCHEMA_CHARS=${VIEWER_MAX_SCHEMA_CHARS:-24000}
-      - VIEWER_ADAPTER_CACHE_PATH=/app/cache/viewer_adapter_cache.json
+      - ./gpt_analysis:/app/gpt_analysis:ro
     networks:
       - model-network
     restart: unless-stopped
