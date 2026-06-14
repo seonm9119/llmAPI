@@ -26,8 +26,8 @@ PROJECT_FIELD_NAMES = {
 
 
 def build_resume_report_context(index_file_path, source_alias_root_path=""):
-    source_root_path = Path(index_file_path).resolve().parent
     project_index_path = Path(index_file_path).resolve()
+    source_root_path = project_index_path.parent
     project_index_source = read_markdown_source(project_index_path, project_index_path.name)
     project_sections = parse_project_sections(project_index_source["content"])
     projects = build_structured_projects(project_sections, source_root_path, source_alias_root_path)
@@ -39,8 +39,8 @@ def build_resume_report_context(index_file_path, source_alias_root_path=""):
 
 
 def build_resume_overall_context(index_file_path, source_alias_root_path=""):
-    source_root_path = Path(index_file_path).resolve().parent
     project_index_path = Path(index_file_path).resolve()
+    source_root_path = project_index_path.parent
     project_index_source = read_markdown_source(project_index_path, project_index_path.name)
     project_sections = parse_project_sections(project_index_source["content"])
     projects = build_project_metadata_items(project_sections, source_root_path, source_alias_root_path)
@@ -255,36 +255,40 @@ def is_markdown_reference_path(reference_path):
 
 def resolve_markdown_file_path(reference_path, source_root_path, source_alias_root_path=""):
     source_root_path = Path(source_root_path).resolve()
-    detail_file_path = Path(reference_path)
+    reference_file_path = Path(reference_path)
 
-    if detail_file_path.is_absolute():
-        detail_file_path = map_source_alias_path(detail_file_path, source_root_path, source_alias_root_path)
-    else:
-        detail_file_path = source_root_path / detail_file_path
-
-    detail_file_path = detail_file_path.resolve()
-
-    if detail_file_path.suffix.lower() != ".md":
+    if reference_file_path.suffix.lower() != ".md":
         raise ValueError(f"{reference_path} is not a markdown file.")
 
-    if not detail_file_path.is_relative_to(source_root_path):
-        raise ValueError(f"{reference_path} is outside the resume report source root.")
+    fallback_file_path = find_markdown_file_by_name(reference_file_path.name, source_root_path)
 
-    return detail_file_path
+    if fallback_file_path:
+        return fallback_file_path
+
+    raise ValueError(f"{reference_file_path.name} is not available under the resume archive projects folder.")
 
 
-def map_source_alias_path(detail_file_path, source_root_path, source_alias_root_path):
-    if not source_alias_root_path:
-        return detail_file_path
+def find_markdown_file_by_name(file_name, source_root_path):
+    if not file_name:
+        return None
 
-    source_alias_root_path = Path(source_alias_root_path).resolve()
+    matching_file_paths = sorted(
+        file_path.resolve()
+        for file_path in Path(source_root_path).resolve().rglob(file_name)
+        if file_path.is_file() and file_path.suffix.lower() == ".md"
+    )
 
-    try:
-        detail_relative_path = detail_file_path.resolve().relative_to(source_alias_root_path)
-    except ValueError:
-        return detail_file_path
+    if not matching_file_paths:
+        return None
 
-    return source_root_path / detail_relative_path
+    if len(matching_file_paths) > 1:
+        relative_matches = ", ".join(
+            file_path.relative_to(Path(source_root_path).resolve()).as_posix()
+            for file_path in matching_file_paths
+        )
+        raise ValueError(f"{file_name} is ambiguous under the resume archive: {relative_matches}")
+
+    return matching_file_paths[0]
 
 
 def build_markdown_source_name(markdown_file_path, source_root_path):
