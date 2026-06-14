@@ -1,0 +1,50 @@
+services:
+  qwen2x5-1x5-b-key-embedding:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: qwen2x5-1x5-b-key-embedding:latest
+    container_name: qwen2x5-1x5-b-key-embedding
+    environment:
+      PYTHONUNBUFFERED: "1"
+      HF_HOME: /models/huggingface
+      TRANSFORMERS_CACHE: /models/huggingface
+      KEY_EMBEDDING_ADAPTER_PATH: /app/best
+      KEY_EMBEDDING_LOAD_ON_STARTUP: "false"
+      KEY_EMBEDDING_UNLOAD_AFTER_INFERENCE: "true"
+      KEY_EMBEDDING_MAX_INPUT_TOKENS: "12288"
+      KEY_EMBEDDING_MAX_NEW_TOKENS: "1024"
+      KEY_EMBEDDING_LOAD_IN_4BIT: auto
+      KEY_EMBEDDING_DEVICE_MAP: auto
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-all}
+      NVIDIA_DRIVER_CAPABILITIES: ${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+      TOKENIZERS_PARALLELISM: "false"
+    volumes:
+      - qwen2x5-hf-cache:/models/huggingface
+      - ./best:/app/best:ro
+    ports:
+      - "192.168.0.21:8004:8004"
+    networks:
+      - model-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8004/health')\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+networks:
+  model-network:
+    external: true
+
+volumes:
+  qwen2x5-hf-cache:
