@@ -1,0 +1,465 @@
+COMMON_PROMPT_LABELS = {
+    "report_id": "보고 ID",
+    "report_version": "보고 버전",
+    "organization_name": "조직명",
+    "inventory_year": "인벤토리 연도",
+    "activity_name": "활동명",
+    "facility": "설비/시설",
+    "usage": "사용량",
+    "usage_unit": "사용량 단위",
+    "unit": "단위",
+    "emission": "배출량",
+    "emissions_unit": "배출량 단위",
+    "emission_unit": "배출량 단위",
+    "emission_factor": "배출계수",
+    "emission_factor_unit": "배출계수 단위",
+    "ef_source": "배출계수 출처",
+    "ef_version": "배출계수 버전",
+    "ef_tier": "배출계수 Tier",
+    "org_boundary_type": "조직 경계 유형",
+    "org_boundary_approach": "조직 경계 접근법",
+    "included_entities_sites": "포함 조직/사업장",
+    "excluded_entities_sites": "제외 조직/사업장",
+    "operational_boundary_type": "운영 경계 유형",
+    "scopes_included": "포함 Scope",
+    "scopes_excluded": "제외 Scope",
+    "materiality_threshold": "중요성 임계값",
+    "verification_level": "검증 수준",
+    "standard_protocol": "표준 프로토콜",
+    "program_regime": "규제 프로그램",
+    "inventory_standard": "인벤토리 표준",
+    "verification_standard": "검증 표준",
+    "data_source": "데이터 출처",
+    "data_collection_process": "데이터 수집 절차",
+    "aggregation_basis": "집계 근거",
+    "outlier_rule": "이상치 규칙",
+    "missing_data_rule": "결측 처리 규칙",
+    "reconciliation_rule": "대사 규칙",
+    "start_date": "시작일",
+    "end_date": "종료일",
+    "instrument_name": "계측기명",
+    "instrument_id": "계측기 ID",
+    "calibration_date": "교정일",
+    "instrument_accuracy": "계측기 정확도",
+    "calibration_evidence_file": "교정 증빙 파일",
+    "formula": "산정식",
+    "rounding_rule": "반올림 규칙",
+    "calculation_method_source": "계산 방법 출처",
+    "gwp_version": "GWP 버전",
+    "prior_year_emission": "전년도 배출량",
+    "monthly_summary_text": "월별 사용량 요약",
+    "prepared_by": "작성자",
+    "reviewed_by": "검토자",
+    "approved_by": "승인자",
+    "file_monthly_raw": "월별 원시 파일",
+    "file_annual_report": "연간 보고서 파일",
+    "file_operation_log": "운영 로그 파일",
+}
+
+MRV_WRITER_SYSTEM = (
+    "You are an MRV (Monitoring, Reporting, Verification) report writer. "
+    "Write professional Korean report prose. Use only the provided data. "
+    "Do not invent values. Output plain text only, no markdown."
+)
+MRV_QC_SYSTEM = (
+    "You are an MRV QA/QC note writer. Write concise Korean QA/QC notes. "
+    "Use only the provided data. Output plain text only, no markdown."
+)
+MRV_ANALYST_SYSTEM = (
+    "You are a carbon management analyst writing an MRV analytics section. "
+    "Write entirely in Korean. Use only the provided data. Output plain text only, no markdown."
+)
+
+
+def legacy_prompt(refs, instruction, system=None, labels=None, max_tokens=512, temperature=0.3, single_line=False):
+    return {
+        "refs": refs,
+        "labels": labels or COMMON_PROMPT_LABELS,
+        "system": system or MRV_WRITER_SYSTEM,
+        "instruction": instruction,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "single_line": single_line,
+    }
+
+
+LEGACY_PROMPTS = {
+    "submission_summary": legacy_prompt(
+        [
+            "mrv_document_metadata.organization_name",
+            "mrv_activity_data.inventory_year",
+            "mrv_activity_data.activity_name",
+            "mrv_activity_data.facility",
+            "mrv_activity_data.usage",
+            "mrv_activity_data.usage_unit",
+            "mrv_calculation_result.emission",
+            "mrv_calculation_result.emissions_unit",
+            "mrv_report.report_id",
+        ],
+        "아래 MRV 보고서 항목을 바탕으로 제출 요약(Submission Summary)을 한국어 3~5문장으로 작성해 주세요.",
+    ),
+    "scope_narrative": legacy_prompt(
+        [
+            "mrv_report.org_boundary_type",
+            "mrv_report.org_boundary_approach",
+            "mrv_report.scopes_excluded",
+            "mrv_document_metadata.materiality_threshold",
+            "mrv_calculation_result.verification_level",
+            "mrv_calculation_result.standard_protocol",
+            "mrv_activity_data.inventory_year",
+        ],
+        "아래 MRV 보고서 항목을 바탕으로 범위(scope) 서술을 한국어 2~4문장으로 작성해 주세요.",
+    ),
+    "boundary_narrative": legacy_prompt(
+        [
+            "mrv_report.org_boundary_type",
+            "mrv_report.included_entities_sites",
+            "mrv_report.excluded_entities_sites",
+            "mrv_report.operational_boundary_type",
+            "mrv_report.scopes_included",
+            "mrv_report.scopes_excluded",
+            "mrv_activity_data.facility",
+            "mrv_activity_data.inventory_year",
+        ],
+        "아래 MRV 보고서 항목을 바탕으로 조직 경계와 운영 경계 설정 내용을 한국어 3~5문장으로 작성해 주세요.",
+    ),
+    "boundary_justification": legacy_prompt(
+        [
+            "mrv_report.operational_boundary_type",
+            "mrv_report.scopes_included",
+            "mrv_report.scopes_excluded",
+            "mrv_activity_data.facility",
+            "mrv_activity_data.inventory_year",
+        ],
+        "아래 입력값을 바탕으로 경계 설정 정당화(Justification)를 한국어 2~4문장으로 작성해 주세요.",
+    ),
+    "data_processing_steps": legacy_prompt(
+        [
+            "mrv_activity_data.data_source",
+            "mrv_activity_data.data_collection_process",
+            "mrv_activity_data.aggregation_basis",
+        ],
+        "아래 입력값을 바탕으로 데이터 출처, 수집 절차, 집계 방식을 포함한 Data Processing Steps를 한국어 3~5문장으로 작성해 주세요.",
+    ),
+    "reconciliation_checks": legacy_prompt(
+        [
+            "mrv_activity_data.aggregation_basis",
+            "mrv_activity_data.outlier_rule",
+            "mrv_activity_data.missing_data_rule",
+            "mrv_activity_data.reconciliation_rule",
+            "mrv_activity_data.usage",
+            "mrv_activity_data.usage_unit",
+        ],
+        "아래 입력값을 바탕으로 집계, 이상치, 결측, 연간/월별 대사 검토 결과를 한국어 2~4문장으로 작성해 주세요.",
+    ),
+    "ef_rationale": legacy_prompt(
+        [
+            "mrv_emission_factor_ref.emission_factor",
+            "mrv_emission_factor_ref.emission_factor_unit",
+            "mrv_emission_factor_ref.ef_source",
+            "mrv_emission_factor_ref.ef_version",
+            "mrv_emission_factor_ref.ef_tier",
+        ],
+        "아래 입력값을 바탕으로 배출계수 근거 및 선택 사유를 한 문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        single_line=True,
+    ),
+    "qc_note_ef": legacy_prompt(
+        [
+            "mrv_emission_factor_ref.emission_factor",
+            "mrv_emission_factor_ref.emission_factor_unit",
+            "mrv_emission_factor_ref.ef_source",
+            "mrv_emission_factor_ref.ef_version",
+            "mrv_emission_factor_ref.ef_tier",
+        ],
+        "아래 입력값을 바탕으로 배출계수 근거 및 선택 사유 QC 노트를 한 문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        single_line=True,
+    ),
+    "qc_note_calc": legacy_prompt(
+        [
+            "mrv_calculation_result.formula",
+            "mrv_activity_data.usage",
+            "mrv_activity_data.usage_unit",
+            "mrv_emission_factor_ref.emission_factor",
+            "mrv_emission_factor_ref.emission_factor_unit",
+            "mrv_calculation_result.emission",
+            "mrv_calculation_result.emissions_unit",
+            "mrv_calculation_result.rounding_rule",
+            "mrv_calculation_result.calculation_method_source",
+        ],
+        "아래 입력값을 바탕으로 산정식, 단위 환산, 반올림 기준, 계산 결과를 설명하는 QC 문구를 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        single_line=True,
+    ),
+    "qc_note_qaqc": legacy_prompt(
+        [
+            "mrv_document_metadata.instrument_name",
+            "mrv_document_metadata.instrument_id",
+            "mrv_document_metadata.calibration_date",
+            "mrv_document_metadata.instrument_accuracy",
+            "mrv_qc_checks.qc_result",
+        ],
+        "아래 입력값을 바탕으로 QA/QC, 검토/승인, 계측기 교정 확인 노트를 한 문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        single_line=True,
+    ),
+    "qc_note_uncertainty": legacy_prompt(
+        [
+            "mrv_document_metadata.materiality_threshold",
+            "mrv_calculation_result.activity_uncertainty",
+            "mrv_calculation_result.ef_uncertainty",
+            "mrv_calculation_result.combined_uncertainty",
+        ],
+        "아래 입력값을 바탕으로 불확도 및 Data Quality 설명 QC 노트를 한 문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        single_line=True,
+    ),
+    "responsibility_statement": legacy_prompt(
+        [
+            "mrv_report.prepared_by",
+            "mrv_report.reviewed_by",
+            "mrv_report.approved_by",
+            "mrv_report.report_id",
+            "mrv_report.report_version",
+        ],
+        "아래 승인 정보를 바탕으로 작성자, 검토자, 승인자의 책임 진술을 한국어로 작성해 주세요.",
+        single_line=True,
+    ),
+    "declarations": legacy_prompt(
+        [
+            "mrv_report.report_id",
+            "mrv_report.program_regime",
+            "mrv_report.verification_standard",
+            "mrv_report.inventory_standard",
+        ],
+        "아래 입력값을 바탕으로 적용 규제와 표준 준수 선언(Compliance Declarations)을 한국어 2~4문장으로 작성해 주세요.",
+        single_line=True,
+    ),
+    "reporting_principles": legacy_prompt(
+        [
+            "mrv_calculation_result.standard_protocol",
+            "mrv_report.program_regime",
+            "mrv_document_metadata.materiality_threshold",
+            "mrv_calculation_result.verification_level",
+            "mrv_activity_data.inventory_year",
+        ],
+        "아래 입력값을 바탕으로 ISO 14064-1의 관련성, 완전성, 일관성, 투명성, 정확성 원칙 적용 문단을 작성해 주세요.",
+        single_line=True,
+    ),
+    "dqi_activity_basis": legacy_prompt(
+        [
+            "mrv_activity_data.usage",
+            "mrv_activity_data.usage_unit",
+            "mrv_activity_data.start_date",
+            "mrv_activity_data.end_date",
+            "mrv_document_metadata.instrument_accuracy",
+        ],
+        "아래 입력값을 바탕으로 Activity Data DQI 평가 근거를 1~2문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        max_tokens=256,
+        single_line=True,
+    ),
+    "dqi_ef_basis": legacy_prompt(
+        [
+            "mrv_emission_factor_ref.ef_source",
+            "mrv_emission_factor_ref.ef_version",
+            "mrv_emission_factor_ref.ef_tier",
+            "mrv_calculation_result.gwp_version",
+        ],
+        "아래 입력값을 바탕으로 Emission Factor DQI 평가 근거를 1~2문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        max_tokens=256,
+        single_line=True,
+    ),
+    "dqi_evidence_basis": legacy_prompt(
+        [
+            "mrv_report.report_id",
+            "mrv_document_metadata.calibration_date",
+            "mrv_document_metadata.calibration_evidence_file",
+        ],
+        "아래 입력값을 바탕으로 Evidence DQI 평가 근거를 1~2문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        max_tokens=256,
+        single_line=True,
+    ),
+    "yoy_analysis": legacy_prompt(
+        [
+            "mrv_calculation_result.emission",
+            "mrv_calculation_result.emissions_unit",
+            "mrv_calculation_result.prior_year_emission",
+            "mrv_activity_data.activity_name",
+            "mrv_activity_data.facility",
+        ],
+        "아래 입력값을 바탕으로 전년 대비(YoY) 배출량 분석을 한국어 2~4문장으로 작성해 주세요.",
+        single_line=True,
+    ),
+    "integrity_requirements": legacy_prompt(
+        ["mrv_report.report_id", "mrv_report.audit_trail_location", "mrv_report.access_control"],
+        "아래 입력값을 바탕으로 보고서 무결성 요구사항과 추적성 관리 문구를 한국어로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        single_line=True,
+    ),
+    "monthly_spike_analysis": legacy_prompt(
+        [
+            "monthly_summary_text",
+            "mrv_activity_data.usage_unit",
+            "mrv_activity_data.inventory_year",
+            "mrv_activity_data.activity_name",
+            "mrv_activity_data.facility",
+        ],
+        "아래 월별 연료 소비 데이터를 분석해 최대 사용월, 월평균 대비 편차, 가능한 운영 원인, 최저 사용월, 다음해 피크 저감 조치를 포함해 최소 5문장으로 작성해 주세요.",
+        system=MRV_ANALYST_SYSTEM,
+        max_tokens=500,
+        temperature=0.35,
+    ),
+    "fuel_reduction_levers": legacy_prompt(
+        [
+            "mrv_activity_data.usage",
+            "mrv_activity_data.usage_unit",
+            "mrv_calculation_result.emission",
+            "mrv_calculation_result.emissions_unit",
+            "mrv_activity_data.activity_name",
+            "mrv_activity_data.facility",
+            "mrv_emission_factor_ref.emission_factor",
+            "monthly_summary_text",
+        ],
+        "아래 입력값을 바탕으로 현재 사용량/배출량, 가장 큰 감축 레버, 두 번째 레버, 예상 감축 효과, 즉시 실행 조치를 포함해 최소 5문장으로 작성해 주세요.",
+        system=MRV_ANALYST_SYSTEM,
+        max_tokens=520,
+        temperature=0.4,
+    ),
+    "cost_reduction_analysis": legacy_prompt(
+        [
+            "mrv_activity_data.usage",
+            "mrv_activity_data.usage_unit",
+            "mrv_calculation_result.emission",
+            "mrv_calculation_result.emissions_unit",
+            "mrv_activity_data.activity_name",
+            "mrv_activity_data.facility",
+            "mrv_emission_factor_ref.emission_factor",
+            "monthly_summary_text",
+        ],
+        "아래 입력값을 바탕으로 -5%, -10%, -15% 연료 절감 시나리오의 비용 절감 관점과 권장 시나리오를 한국어 최소 5문장으로 작성해 주세요.",
+        system=MRV_ANALYST_SYSTEM,
+        max_tokens=560,
+        temperature=0.4,
+    ),
+    "industry_benchmark": legacy_prompt(
+        [
+            "mrv_activity_data.usage",
+            "mrv_activity_data.usage_unit",
+            "mrv_calculation_result.emission",
+            "mrv_calculation_result.emissions_unit",
+            "mrv_activity_data.activity_name",
+            "mrv_activity_data.facility",
+            "mrv_emission_factor_ref.emission_factor",
+            "mrv_emission_factor_ref.ef_source",
+            "mrv_emission_factor_ref.ef_tier",
+            "mrv_activity_data.inventory_year",
+            "chart_summary.total_cost",
+            "chart_summary.total_cost_unit",
+            "chart_summary.avg_efficiency",
+            "chart_summary.efficiency_unit",
+        ],
+        "아래 입력값을 바탕으로 환경 성과와 비용 효율성 두 관점의 업계 벤치마크 비교 분석을 한국어 최소 5문장으로 작성해 주세요.",
+        system=MRV_ANALYST_SYSTEM,
+        max_tokens=760,
+        temperature=0.4,
+    ),
+    "qaqc_readiness_narrative": legacy_prompt(
+        [
+            "mrv_opinion.llm_decl_val",
+            "mrv_opinion.llm_acc_val",
+            "mrv_opinion.llm_diff_pct",
+            "mrv_opinion.llm_rejection_reason",
+            "mrv_opinion.llm_adj_total",
+            "mrv_opinion.llm_fuel_eff_cv",
+            "mrv_opinion.llm_emissions",
+            "mrv_opinion.llm_op_unit",
+        ],
+        "아래 QA/QC 판정 데이터를 기반으로 제출 전 검토 설명문을 한국어 한 문단으로 작성해 주세요.",
+        system=MRV_ANALYST_SYSTEM,
+        max_tokens=360,
+        temperature=0.3,
+    ),
+    "qc_note_period_consistency": legacy_prompt(
+        ["mrv_activity_data.start_date", "mrv_activity_data.end_date", "mrv_activity_data.usage_unit"],
+        "보고기간과 활동자료 단위 일관성 확인 결과를 한 문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        max_tokens=256,
+        single_line=True,
+    ),
+    "qc_note_outlier_check": legacy_prompt(
+        ["mrv_activity_data.usage", "mrv_activity_data.usage_unit", "mrv_report_activity_uploads.file_operation_log"],
+        "월별 이상치 점검 결과와 운영로그 근거를 한 문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        max_tokens=256,
+        single_line=True,
+    ),
+    "qc_note_missing_data": legacy_prompt(
+        ["mrv_activity_data.usage", "mrv_activity_data.missing_data_rule", "mrv_activity_data.reconciliation_rule"],
+        "결측/대체 처리 기록과 대사 규칙 확인 결과를 한 문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        max_tokens=256,
+        single_line=True,
+    ),
+    "qc_note_trace": legacy_prompt(
+        ["mrv_activity_data.usage", "mrv_report_activity_uploads.file_monthly_raw", "mrv_report_activity_uploads.file_annual_report"],
+        "연간 총량, 월별 원시 데이터, 증빙 연결성 확인 결과를 한 문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        max_tokens=256,
+        single_line=True,
+    ),
+    "qc_note_boundary": legacy_prompt(
+        ["mrv_activity_data.facility", "mrv_report.org_boundary_type"],
+        "보고 경계와 설비 범위 확인 QC 노트를 한 문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        max_tokens=256,
+        single_line=True,
+    ),
+    "qc_note_activity": legacy_prompt(
+        ["mrv_activity_data.usage", "mrv_activity_data.usage_unit", "mrv_activity_data.start_date", "mrv_activity_data.end_date"],
+        "활동자료 사용량과 기간 확인 QC 노트를 한 문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        max_tokens=256,
+        single_line=True,
+    ),
+    "qc_note_evidence": legacy_prompt(
+        ["mrv_report.report_id", "evidence_register_table_rows"],
+        "증빙자료 연결성과 추적성 확인 QC 노트를 한 문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        max_tokens=256,
+        single_line=True,
+    ),
+    "qc_note_changelog": legacy_prompt(
+        ["mrv_report.report_version", "changelog_table_rows"],
+        "보고서 변경 이력 확인 QC 노트를 한 문장으로 작성해 주세요.",
+        system=MRV_QC_SYSTEM,
+        max_tokens=256,
+        single_line=True,
+    ),
+}
+
+PROMPT_ALIASES = {
+    "qc_note_ef_version": "qc_note_ef",
+    "calculation_method_narrative": "qc_note_calc",
+    "calculation_interpretation": "qc_note_calc",
+    "aggregation_narrative": "reconciliation_checks",
+    "dq_statement": "qc_note_qaqc",
+    "uncertainty_statement": "qc_note_uncertainty",
+}
+
+
+def get_prompt_definition(field):
+    key = PROMPT_ALIASES.get(field, field)
+    prompt_definition = LEGACY_PROMPTS.get(key)
+    if prompt_definition:
+        return key, prompt_definition
+    return field, legacy_prompt(
+        ["mrv_report.report_id"],
+        f"아래 입력값을 바탕으로 {field} 항목에 들어갈 MRV 보고서 문구를 한국어로 작성해 주세요.",
+        labels={"report_id": "보고 ID"},
+        max_tokens=384,
+        single_line=True,
+    )
