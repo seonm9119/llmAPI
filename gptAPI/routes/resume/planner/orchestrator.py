@@ -13,6 +13,12 @@ from .domains import (
     DOMAIN_PLANNER_SYSTEM_PROMPT,
     normalize_domain_plan,
 )
+from .radar import (
+    RADAR_PLANNER_PROMPT_VERSION,
+    RADAR_PLANNER_RESPONSE_SCHEMA,
+    RADAR_PLANNER_SYSTEM_PROMPT,
+    normalize_radar_plan,
+)
 from .summary import (
     SUMMARY_PLANNER_PROMPT_VERSION,
     SUMMARY_PLANNER_RESPONSE_SCHEMA,
@@ -33,7 +39,8 @@ def create_resume_report_evaluation_plan(resume_report_context, model):
     domain_ranks = plan_domain_ranks(resume_report_context, model, allowed_source_names, capability_cards)
     tech_stack_plan = plan_tech_stack_cards(resume_report_context, model, allowed_source_names, capability_cards, domain_ranks)
     tech_stack_cards = tech_stack_plan["techStackCards"]
-    summary_frame = plan_summary_frame(resume_report_context, model, capability_cards, domain_ranks, tech_stack_plan)
+    radar_axes = plan_radar_axes(resume_report_context, model, capability_cards, domain_ranks, tech_stack_cards)
+    summary_frame = plan_summary_frame(resume_report_context, model, capability_cards, domain_ranks, tech_stack_plan, radar_axes)
 
     return {
         "summaryFrame": summary_frame,
@@ -43,7 +50,8 @@ def create_resume_report_evaluation_plan(resume_report_context, model):
         "skillCards": tech_stack_cards,
         "skillKeywordGroups": tech_stack_plan["skillKeywordGroups"],
         "techStackSynthesis": tech_stack_plan["techStackSynthesis"],
-        "planningNotes": build_planning_notes(summary_frame, capability_cards, domain_ranks, tech_stack_cards),
+        "radarAxes": radar_axes,
+        "planningNotes": build_planning_notes(summary_frame, capability_cards, domain_ranks, tech_stack_cards, radar_axes),
     }
 
 
@@ -52,14 +60,15 @@ def create_resume_summary_evaluation_plan(resume_report_context, model):
     capability_cards = plan_capability_cards(resume_report_context, model, allowed_source_names)
     domain_ranks = plan_domain_ranks(resume_report_context, model, allowed_source_names, capability_cards)
     tech_stack_plan = plan_tech_stack_cards(resume_report_context, model, allowed_source_names, capability_cards, domain_ranks)
+    radar_axes = plan_radar_axes(resume_report_context, model, capability_cards, domain_ranks, tech_stack_plan.get("techStackCards", []))
 
-    return plan_summary_frame(resume_report_context, model, capability_cards, domain_ranks, tech_stack_plan)
+    return plan_summary_frame(resume_report_context, model, capability_cards, domain_ranks, tech_stack_plan, radar_axes)
 
 
-def plan_summary_frame(resume_report_context, model, capability_cards, domain_ranks, tech_stack_plan):
+def plan_summary_frame(resume_report_context, model, capability_cards, domain_ranks, tech_stack_plan, radar_axes):
     payload = build_section_planner_payload(
         resume_report_context,
-        "Create the top-level overall summary abstraction from the selected capability, domain, and tech-stack sections.",
+        "Create the top-level overall summary abstraction from the induced capability, domain, technology, and radar sections.",
         SUMMARY_PLANNER_PROMPT_VERSION,
         {
             "capabilityCards": capability_cards,
@@ -67,6 +76,7 @@ def plan_summary_frame(resume_report_context, model, capability_cards, domain_ra
             "techStackCards": tech_stack_plan.get("techStackCards") if isinstance(tech_stack_plan, dict) else [],
             "skillKeywordGroups": tech_stack_plan.get("skillKeywordGroups") if isinstance(tech_stack_plan, dict) else [],
             "techStackSynthesis": tech_stack_plan.get("techStackSynthesis") if isinstance(tech_stack_plan, dict) else [],
+            "radarAxes": radar_axes,
         },
     )
     summary_plan, _raw_response_text = create_structured_response(
@@ -81,7 +91,7 @@ def plan_summary_frame(resume_report_context, model, capability_cards, domain_ra
 def plan_capability_cards(resume_report_context, model, allowed_source_names):
     payload = build_section_planner_payload(
         resume_report_context,
-        "Choose the four strongest evidence-based capability judgement cards.",
+        "Induce the four strongest evidence-based capability judgement cards.",
         CAPABILITY_PLANNER_PROMPT_VERSION,
     )
     capability_plan, _raw_response_text = create_structured_response(
@@ -96,7 +106,7 @@ def plan_capability_cards(resume_report_context, model, allowed_source_names):
 def plan_domain_ranks(resume_report_context, model, allowed_source_names, capability_cards):
     payload = build_section_planner_payload(
         resume_report_context,
-        "Choose the Top 3 AI domains from all project evidence.",
+        "Induce the Top 3 AI/domain clusters from all project evidence.",
         DOMAIN_PLANNER_PROMPT_VERSION,
         {
             "capabilityCards": capability_cards,
@@ -114,7 +124,7 @@ def plan_domain_ranks(resume_report_context, model, allowed_source_names, capabi
 def plan_tech_stack_cards(resume_report_context, model, allowed_source_names, capability_cards, domain_ranks):
     payload = build_section_planner_payload(
         resume_report_context,
-        "Choose the four strongest technology-stack proof cards for the selected evaluation axes and AI domains.",
+        "Induce the four strongest technology-cluster proof cards for the selected evaluation axes and AI/domain clusters.",
         TECH_STACK_PLANNER_PROMPT_VERSION,
         {
             "capabilityCards": capability_cards,
@@ -130,19 +140,42 @@ def plan_tech_stack_cards(resume_report_context, model, allowed_source_names, ca
     return normalize_tech_stack_plan(tech_stack_plan, allowed_source_names)
 
 
-def build_planning_notes(summary_frame, capability_cards, domain_ranks, skill_cards):
+def plan_radar_axes(resume_report_context, model, capability_cards, domain_ranks, tech_stack_cards):
+    payload = build_section_planner_payload(
+        resume_report_context,
+        "Induce the six strongest radar axes for the induced evaluation axes and AI/domain clusters.",
+        RADAR_PLANNER_PROMPT_VERSION,
+        {
+            "capabilityCards": capability_cards,
+            "domainRanks": domain_ranks,
+            "techStackCards": tech_stack_cards,
+        },
+    )
+    radar_plan, _raw_response_text = create_structured_response(
+        RADAR_PLANNER_SYSTEM_PROMPT,
+        payload,
+        RADAR_PLANNER_RESPONSE_SCHEMA,
+        model=model,
+    )
+    return normalize_radar_plan(radar_plan)
+
+
+def build_planning_notes(summary_frame, capability_cards, domain_ranks, skill_cards, radar_axes):
     planning_notes = []
 
     if summary_frame:
-        planning_notes.append("summary planner created the top-level abstraction from the selected capability, domain, and tech-stack sections.")
+        planning_notes.append("summary planner created the top-level abstraction from the induced capability, domain, technology, and radar sections.")
 
     if capability_cards:
-        planning_notes.append("capability planner selected the four core judgement cards for the resume page.")
+        planning_notes.append("capability planner induced the four core judgement cards for the resume page.")
 
     if domain_ranks:
-        planning_notes.append("domain planner ranked the AI Top 3 from project evidence strength.")
+        planning_notes.append("domain planner induced and ranked the AI/domain Top 3 from project evidence strength.")
 
     if skill_cards:
-        planning_notes.append("tech-stack planner selected evidence-backed stack proof cards.")
+        planning_notes.append("tech-stack planner induced evidence-backed technology proof cards.")
+
+    if radar_axes:
+        planning_notes.append("radar planner induced six evidence-backed competency axes.")
 
     return planning_notes

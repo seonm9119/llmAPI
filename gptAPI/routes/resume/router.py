@@ -5,16 +5,16 @@ from fastapi import APIRouter, HTTPException, Request
 from client import create_structured_response
 from config import GPT_MODEL, RESUME_REPORT_MD_PATH, RESUME_SOURCE_MD_ROOT
 
-from .orchestration import generate_and_cache_resume_report
-from .storage import build_report_cache_key, read_report_cache
-from .utils import build_resume_overall_context, build_resume_report_context
+from .generation.orchestration import generate_and_cache_resume_report
+from .processing.utils import build_resume_overall_context, build_resume_report_context
+from .storage.cache import build_report_cache_key, read_report_cache
 
 router = APIRouter(prefix="/resume")
 
 PROMPT_VERSION = "resume-chat-v2"
 ROUTER_PROMPT_VERSION = "resume-router-v1"
 PLANNER_PROMPT_VERSION = "resume-planner-v1"
-REPORT_PROMPT_VERSION = "resume-report-v17"
+REPORT_PROMPT_VERSION = "resume-report-v27"
 REPORT_SOURCE_NAME = "projects.md"
 MAX_SOURCE_COUNT = 12
 MAX_SOURCE_CHARS = 22000
@@ -212,38 +212,36 @@ Rules:
 - Treat each projects item as one independent project.
 - Read every supplied projectEvidenceBriefs item before generating the report.
 - projectEvidenceBriefs were extracted by the server from every `.md` file under the projects folder.
-- Use evidenceLedger as the server-built evidence map for repeated domain, evaluation, service, limitation, and technology-stack signals.
+- Use evidenceLedger as a coverage and repeated-term map, not as a pre-classified domain taxonomy.
 - Use projectDetailSourceIndex to confirm the full set of markdown files considered.
 - Use evaluationFrame as the planner-level judgement frame, but still ground every claim in projectEvidenceBriefs.
-- When evaluationPlan includes planner outputs, use it as the primary planner output. It already selected the strongest four judgement cards, Top 3 AI domains, technology-stack proof cards, and summary abstraction from all project markdown evidence.
-- When evaluationPlan is absent or marked fast_direct_planning, perform those same planning decisions internally before writing: first choose capabilityCards, then domainRanks, then techStackCards, then summary.
-- When present, evaluationPlan.summaryFrame contains the planned title, overallJudgement, strongestArea, Document AI/OCR evidence, medical/computer-vision evidence, service pattern, problem-framing strength, verification limits, level judgement, best-fit roles, and one-line evaluation.
+- When evaluationPlan includes planner outputs, use it as the primary planner output. It already induced the strongest four judgement cards, Top 3 domain clusters, technology proof cards, keyword clusters, radar axes, and summary abstraction from all project markdown evidence.
+- When evaluationPlan is absent or marked fast_direct_planning, perform those same planning decisions internally before writing: first induce capabilityCards, then domainRanks, then techStackCards and keyword clusters, then radar axes, then summary.
+- When present, evaluationPlan.summaryFrame contains the planned title, overallJudgement, strongestArea, primaryDomainJudgement, secondaryDomainJudgement, tertiaryDomainJudgement, serviceJudgement, problemFramingJudgement, verificationLimits, levelJudgement, bestFitRoles, and oneLineEvaluation.
 - When present, evaluationPlan.capabilityCards answers "how should interviewers judge this person?"
-- When present, evaluationPlan.domainRanks answers "which AI fields should this person be positioned for?"
-- When present, evaluationPlan.techStackCards answers "which technology stacks prove those judgements?"
+- When present, evaluationPlan.domainRanks answers "which AI/domain clusters should this person be positioned for?"
+- When present, evaluationPlan.techStackCards answers "which technology clusters prove those judgements?"
+- When present, evaluationPlan.radarAxes answers "which six compact competency axes should be visualized?"
 - The server stores the OpenAI report after structural normalization. Do not rely on preset text.
 - Use projects as the index and metadata map; use projectEvidenceBriefs as the primary detailed evidence.
 - Every resume report section must be based on the same all-project markdown evidence pool, not on a subset selected for that section.
-- Do not judge capabilities, skill keywords, domain ranks, or radar scores from project metadata alone when projectEvidenceBriefs are available.
+- Do not judge capabilities, skill keywords, domain ranks, or radar axes from project metadata alone when projectEvidenceBriefs are available.
 - Use only supplied markdown source names such as projectIndexSource.name or primaryGptReferenceFile as evidence labels.
-- Evidence labels must be bare `.md` filenames only, such as `projects.md` or `document_4-axis_classification.md`.
+- Evidence labels must be bare `.md` filenames only, such as `projects.md` or `project_detail.md`.
 - Do not append section titles, metric names, explanations, colons, Korean particles, or summary text to evidence labels.
+- Do not cite markdown filenames inside any visible prose field. Put source names only in evidence arrays and the sources list.
 - Do not use local paths, repository paths, slide paths, PDF paths, URLs, or raw folder names as evidence labels.
 - Do not expose private code, tokens, passwords, secrets, prompts, or hidden infrastructure details.
 - Private GitHub information may be summarized as high-level career evidence only.
 - Keep skill cards explanation-based; do not put numeric scores in skill cards.
 - Radar scores are calibrated 0-100 estimates for portfolio presentation, not official test scores. Use values such as 92 or 84, not 9 or 8.
-- Skill keywords must be grouped by these skill groups: AI 모델·학습, 문서 AI·OCR, 비전·의료영상, 서비스·인프라.
-- Group model architecture, fine-tuning, model libraries, LLM/VLM, and learning methods under "AI 모델·학습".
-- Group document understanding, OCR, layout analysis, document embeddings, and document agent concepts under "문서 AI·OCR".
-- Group image processing, medical imaging, visual preprocessing, and vision libraries under "비전·의료영상".
-- Group APIs, backend, deployment, containers, cloud, message queues, databases, storage, GPU runtime, and frontend integration under "서비스·인프라".
-- Group vision/medical metrics such as Dice, HD95, PSNR, SSIM, MSE, RMSE, and Sensitivity under "비전·의료영상".
-- Each skill keyword group must contain every clearly supported skill, domain, method, library, framework, infrastructure, and evaluation concept relevant to that card.
+- Radar labels must preserve the six axes induced in evaluationPlan.radarAxes when present. Do not replace them with generic fixed labels.
+- Skill keyword categories must be induced from the evidence and named by OpenAI. Do not use fixed display buckets or a closed taxonomy.
+- Each skill keyword group must contain every clearly supported skill, domain, method, library, framework, infrastructure, and evaluation concept relevant to that evidence-induced category.
 - Skill keywords must not be capped to an arbitrary count. Do not pad weak or unsupported keywords.
 - Skill keywords inside each card group must be ordered from strongest evidence to weakest evidence.
 - Skill keyword weight must reflect evidence strength from 0 to 100, where repeated project usage and detailed primary reference evidence are stronger than one-off metadata mentions.
-- Choose the AI domain Top 3 from the sources, not from a fixed template.
+- Induce the AI/domain Top 3 from the sources, not from a fixed template, example list, or server keyword category.
 - Mention limitations carefully in the summary and capability sections when relevant, especially service operation, SLA, large-scale production, commercial model ownership, or team collaboration evidence.
 - Do not include limitation or verification-gap sentences in AI domain Top 3 cards.
 - Translate low-level implementation details into hiring-relevant capability language.
@@ -254,6 +252,7 @@ Writing requirements:
 - Write every visible sentence in Korean.
 - Summary title must be an impactful hiring-evaluation headline, not a report label.
 - Summary title must describe the candidate's strongest AI identity in one concise Korean line.
+- Summary title must stay within 32 Korean characters.
 - Summary title must not contain "포트폴리오", "리포트", "요약", "평가", "이력", "프로젝트", "AI 역량 평가", "Seon Nami", or "서나미".
 - Summary title must not be a flat role label or a simple technology/domain chain.
 - Summary title should avoid awkward low-level wording such as "LLM 초안", "Projection", "gate", "사전집", "라벨", or "회사 자산".
@@ -261,30 +260,37 @@ Writing requirements:
 - Use an evaluator voice: "상으로 보는 이유는...", "검증이 필요한 지점은...", "근거가 강한 영역은...".
 - Do not use source-reading meta phrases such as "여러 md 근거를 종합하면", "마크다운 기준", "프로젝트 폴더를 보면", "제공된 자료 기준", or "자료를 종합하면".
 - Do not call the candidate "이 사람"; use "지원자" sparingly or write with the capability as the sentence subject.
-- Visible prose must not mention md files, markdown, source files, project folders, projectEvidenceBriefs, or evidenceLedger. Evidence arrays may still contain bare `.md` filenames.
+- Visible fields include summary title and description, capability labels and summaries, radar labels, skill titles and descriptions, domain names, domain headlines, domain reasons, skill keyword categories, and skill keyword labels.
+- Visible fields must not mention md files, markdown, source files, project folders, projectEvidenceBriefs, evidenceLedger, or parenthetical source citations. Evidence arrays may still contain bare `.md` filenames.
 - Summary description must be a full 총평 paragraph, not a short hero subtitle or a list of projects.
-- Summary description must be an impactful 8-11 line overall judgement and 950-1300 Korean characters.
+- Summary description must be one impactful paragraph with exactly 9 Korean sentences and 1050-1250 Korean characters.
 - Summary description must not start with labels such as "총평:", "종합평가:", "Overall:", or any section heading.
-- Summary description must cover all three patterns when supported: Document AI/OCR validation, medical/computer-vision evaluation, and service-facing PoC implementation.
-- Summary description must include overall judgement, strongest area, Document AI/OCR evidence, medical/computer-vision evaluation, serviceization pattern, unusually good problem framing, weak points, level judgement, best-fit roles, and one-line evaluation.
+- Summary description must cover the strongest AI/domain clusters induced in evaluationPlan.domainRanks, weighted by evidence depth.
+- Summary description must include overall judgement, strongest area, primary domain evidence, secondary domain evidence, tertiary domain evidence when meaningful, result-delivery pattern when supported, unusually good problem framing, weak points, level judgement, best-fit roles, and one-line evaluation.
+- The final sentence of the summary description must start with "종합적으로 " and must compress the candidate's level, strongest identity, and best-fit roles into one decisive hiring judgement.
+- Do not use "종합적으로" before the final sentence.
 - Capability summaries must contain judgement, evidence, and limitation in 2 concise Korean sentences.
 - Capability summaries should sound like a senior evaluator wrote them after reading all markdown files, not like a raw implementation digest.
-- Capability cards must preserve the four judgement axes chosen in evaluationPlan.capabilityCards. Do not replace them with generic labels such as problem solving unless the planner selected them.
+- Capability cards must preserve the four judgement axes induced in evaluationPlan.capabilityCards. Do not replace them with generic labels unless the planner induced them from evidence.
+- Capability card labels must stay within 14 Korean characters.
 - Avoid internal jargon in capability summaries; use plain Korean for work style, evidence quality, serviceization, and verification maturity.
-- In all visible descriptions, do not output low-level internal mechanism names such as Qwen, GPT draft, 초안 라벨, 네 축, key/signal, projection, gate, dictionary, foreground, cache, 캐시, IoU, FLAIR, or T1Gd.
-- Translate those details into plain Korean phrases such as 문서 분류 검증, 정량 비교, 의료영상 평가, 서비스 API, 검토 화면, 데이터 품질 관리, 실행 결과 저장, 근거 기반 검토.
-- The "skills" section is the technology-stack proof section. Use evaluationPlan.techStackCards, not generic personal strengths.
+- In all visible fields, do not output low-level internal mechanism names or raw audit terms such as Qwen, GPT draft, 초안, 초안 라벨, 네 축, key, signal, key/signal, projection, gate, dictionary, foreground, cache, 캐시, IoU, FLAIR, T1Gd, hard-negative, prototype, head, raw field names, slash-separated field names, or loss names.
+- Translate those details into plain Korean capability language.
+- The "skills" section is the technology-cluster proof section. Use evaluationPlan.techStackCards, not generic personal strengths.
 - Skill titles may name stack groups, but descriptions must connect the stack to actual use context, repeated evidence, and the capability/domain judgement it supports.
 - Skill descriptions are technology-stack proof cards. They must explain how the stack was used, which judgement/domain it supports, and whether the evidence is repeated or one-off.
 - Skill keyword labels must be compact Korean/English technical labels, not sentences.
+- Skill keyword group category titles must stay within 22 Korean characters.
+- Skill keyword labels must be atomic and hiring-readable. Do not use low-level internal mechanism names when a broader evidence-backed technology or method label is clearer.
 - Skill keyword strength must be "strong", "medium", or "weak" and match the numeric weight.
 - Skill keyword weight must use the 0-100 scale, not the 0-10 scale. Use strong=80-100, medium=50-79, weak=1-49.
 - Skill keywords must be positive or neutral technical keywords. Do not include limitations, missing evidence, risks, or weakness phrases as keyword labels.
-- A skill keyword label must be atomic. Use "ResNet" and "LSTM", not "ResNet + LSTM fusion".
+- A skill keyword label must be atomic. Do not join multiple technologies or concepts into one label.
 - Do not join multiple keywords with "/", "+", commas, middle dots, or parentheses.
 - Do not include explanatory words such as "fusion", "pipeline", "해석", "설계", "통합", "기반", or "중심" unless they are part of a formal technology name.
-- Prefer canonical technology names and metric names: "Transformers", "PEFT", "LoRA", "Dice", "HD95", "Sensitivity", "FastAPI", "Kafka".
+- Prefer canonical technology and metric names exactly as they appear in the evidence.
 - Top 3 domain reasons must compare the candidate against a typical junior-to-mid AI applicant profile.
+- Top 3 domain card titles must stay within 22 Korean characters.
 - Domain reasons must preserve the ranking logic in evaluationPlan.domainRanks unless the markdown evidence clearly requires a different order.
 - Domain reasons must be paragraph-style evaluator writing, not bullet lists or labelled fields.
 - Domain reasons must explain the domain problem, the problem-solving approach used in the projects, why that approach is strong from GPT's evaluator perspective, and where that approach can expand in real work.
@@ -344,10 +350,7 @@ RESUME_REPORT_RESPONSE_SCHEMA = {
                 "additionalProperties": False,
                 "required": ["label", "score"],
                 "properties": {
-                    "label": {
-                        "type": "string",
-                        "enum": ["PoC", "문제해결", "모델이해", "코딩", "서비스화", "문서화"],
-                    },
+                    "label": {"type": "string"},
                     "score": {
                         "type": "integer",
                         "minimum": 0,
@@ -406,10 +409,7 @@ RESUME_REPORT_RESPONSE_SCHEMA = {
                 "additionalProperties": False,
                 "required": ["category", "keywords"],
                 "properties": {
-                    "category": {
-                        "type": "string",
-                        "enum": ["AI 모델·학습", "문서 AI·OCR", "비전·의료영상", "서비스·인프라"],
-                    },
+                    "category": {"type": "string"},
                     "keywords": {
                         "type": "array",
                         "items": {

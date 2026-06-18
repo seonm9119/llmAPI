@@ -3,7 +3,13 @@ import json
 import time
 from pathlib import Path
 
-from .strategy import OPENAI_GENERATED_PROVIDER, REPORT_CACHE_VERSION, REPORT_SECTION_NAMES
+from ..generation.strategy import OPENAI_GENERATED_PROVIDER, REPORT_CACHE_VERSION, REPORT_SECTION_NAMES
+from ..processing.text_utils import (
+    clean_ai_domain_card_title,
+    clean_capability_card_title,
+    clean_skill_keyword_group_title,
+    clean_summary_title,
+)
 
 
 REPORT_CACHE_PATH = Path(__file__).resolve().parents[2] / "cache" / "resume_report_cache.json"
@@ -44,6 +50,11 @@ def read_report_cache(cache_key):
     if not is_complete_report(report):
         return None
 
+    normalize_cached_report_payload(cache_payload)
+
+    if not is_complete_report(cache_payload.get("report")):
+        return None
+
     return cache_payload
 
 
@@ -68,6 +79,44 @@ def write_report_cache(cache_key, provider, model, report):
     temporary_cache_path.write_text(json.dumps(cache_payload, ensure_ascii=False, indent=2), encoding="utf-8")
     temporary_cache_path.replace(REPORT_CACHE_PATH)
     return cache_payload
+
+
+def normalize_cached_report_payload(cache_payload):
+    report = cache_payload.get("report")
+
+    if not isinstance(report, dict):
+        return
+
+    summary = report.get("summary")
+
+    if not isinstance(summary, dict):
+        return
+
+    summary["title"] = clean_summary_title(summary.get("title"))
+    normalize_cached_card_titles(report)
+
+
+def normalize_cached_card_titles(report):
+    capabilities = report.get("capabilities")
+
+    if isinstance(capabilities, list):
+        for capability in capabilities:
+            if isinstance(capability, dict):
+                capability["label"] = clean_capability_card_title(capability.get("label"))
+
+    domains = report.get("domains")
+
+    if isinstance(domains, list):
+        for domain in domains:
+            if isinstance(domain, dict):
+                domain["domain"] = clean_ai_domain_card_title(domain.get("domain"))
+
+    skill_keyword_groups = report.get("skillKeywords")
+
+    if isinstance(skill_keyword_groups, list):
+        for skill_keyword_group in skill_keyword_groups:
+            if isinstance(skill_keyword_group, dict):
+                skill_keyword_group["category"] = clean_skill_keyword_group_title(skill_keyword_group.get("category"))
 
 
 def build_source_fingerprints(resume_context):

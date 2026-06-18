@@ -1,6 +1,7 @@
-from .planner import create_resume_report_evaluation_plan
+from .editor import REPORT_EDITOR_SYSTEM_PROMPT, build_report_editor_payload
 from .strategy import build_report_generation_payload
-from .normalizer import normalize_markdown_source_name, normalize_openai_report
+from ..planner import create_resume_report_evaluation_plan
+from ..processing.normalizer import normalize_markdown_source_name, normalize_openai_report
 
 
 def collect_allowed_source_names_tool(resume_report_context):
@@ -27,6 +28,16 @@ def plan_report_sections_tool(resume_report_context, model):
 def call_report_writer_tool(create_structured_response, system_prompt, response_schema, resume_report_context, report_prompt_version, evaluation_plan, model):
     writer_payload = build_report_generation_payload(resume_report_context, report_prompt_version, evaluation_plan)
     report_response, raw_response_text = create_structured_response(system_prompt, writer_payload, response_schema, model=model)
+
+    return {
+        "report": report_response,
+        "rawResponseText": raw_response_text,
+    }
+
+
+def call_report_editor_tool(create_structured_response, response_schema, resume_report_context, report_prompt_version, evaluation_plan, draft_report, model):
+    editor_payload = build_report_editor_payload(resume_report_context, report_prompt_version, evaluation_plan, draft_report)
+    report_response, raw_response_text = create_structured_response(REPORT_EDITOR_SYSTEM_PROMPT, editor_payload, response_schema, model=model)
 
     return {
         "report": report_response,

@@ -1,11 +1,12 @@
-from .storage import write_report_cache
 from .strategy import OPENAI_GENERATED_PROVIDER
 from .tool_calling import (
+    call_report_editor_tool,
     call_report_writer_tool,
     collect_allowed_source_names_tool,
     normalize_report_tool,
     plan_report_sections_tool,
 )
+from ..storage.cache import write_report_cache
 
 
 def generate_and_cache_resume_report(
@@ -28,7 +29,16 @@ def generate_and_cache_resume_report(
         evaluation_plan,
         model,
     )
-    normalized_report = normalize_report_tool(writer_output["report"], allowed_source_names)
+    editor_output = call_report_editor_tool(
+        create_structured_response,
+        report_response_schema,
+        resume_report_context,
+        report_prompt_version,
+        evaluation_plan,
+        writer_output["report"],
+        model,
+    )
+    normalized_report = normalize_report_tool(editor_output["report"], allowed_source_names)
     cache_payload = write_report_cache(
         cache_key,
         OPENAI_GENERATED_PROVIDER,

@@ -1,6 +1,13 @@
 import re
 
-from .strategy import RADAR_LABELS, SKILL_KEYWORD_GROUP_LABELS
+from .text_utils import (
+    clean_ai_domain_card_title,
+    clean_capability_card_title,
+    clean_skill_keyword_group_title,
+    clean_summary_title,
+    clean_visible_text,
+    split_atomic_keyword_labels,
+)
 
 
 MARKDOWN_SOURCE_PATTERN = re.compile(r"[^`\"'<>:;,\[\](){}\n]+?\.md")
@@ -11,23 +18,23 @@ def normalize_openai_report(report, allowed_source_names):
         return {}
 
     return {
-        "summary": normalize_summary(report.get("summary")),
+        "summary": normalize_summary(report.get("summary"), allowed_source_names),
         "capabilities": normalize_capabilities(report.get("capabilities"), allowed_source_names),
-        "radar": normalize_radar(report.get("radar")),
+        "radar": normalize_radar(report.get("radar"), allowed_source_names),
         "skills": normalize_skills(report.get("skills"), allowed_source_names),
         "domains": normalize_domains(report.get("domains"), allowed_source_names),
-        "skillKeywords": normalize_skill_keyword_groups(report.get("skillKeywords")),
+        "skillKeywords": normalize_skill_keyword_groups(report.get("skillKeywords"), allowed_source_names),
         "sources": normalize_sources(report.get("sources"), allowed_source_names),
     }
 
 
-def normalize_summary(summary):
+def normalize_summary(summary, allowed_source_names):
     if not isinstance(summary, dict):
         return {}
 
     return {
-        "title": str(summary.get("title") or "").strip()[:100],
-        "description": clean_summary_description(summary.get("description")),
+        "title": clean_summary_title(summary.get("title"), allowed_source_names),
+        "description": clean_summary_description(summary.get("description"), allowed_source_names),
     }
 
 
@@ -43,8 +50,8 @@ def normalize_capabilities(capabilities, allowed_source_names):
         if not isinstance(capability, dict):
             continue
 
-        label = str(capability.get("label") or "").strip()
-        summary = str(capability.get("summary") or "").strip()
+        label = clean_capability_card_title(capability.get("label"), allowed_source_names)
+        summary = clean_visible_text(capability.get("summary"), 600, allowed_source_names)
 
         if not label or not summary:
             continue
@@ -53,9 +60,9 @@ def normalize_capabilities(capabilities, allowed_source_names):
         tone = str(capability.get("tone") or "").strip()
 
         normalized_capabilities.append({
-            "label": label[:40],
+            "label": label,
             "grade": grade if grade in allowed_grades else "중상",
-            "summary": summary[:600],
+            "summary": summary,
             "evidence": normalize_markdown_evidence(capability.get("evidence"), allowed_source_names, 3),
             "tone": tone if tone in allowed_tones else "blue",
         })
@@ -63,7 +70,7 @@ def normalize_capabilities(capabilities, allowed_source_names):
     return normalized_capabilities
 
 
-def normalize_radar(radar_items):
+def normalize_radar(radar_items, allowed_source_names):
     if not isinstance(radar_items, list):
         return []
 
@@ -73,13 +80,13 @@ def normalize_radar(radar_items):
         if not isinstance(radar_item, dict):
             continue
 
-        label = str(radar_item.get("label") or "").strip()
+        label = clean_visible_text(radar_item.get("label"), 24, allowed_source_names)
 
-        if label not in RADAR_LABELS:
+        if not label:
             continue
 
         normalized_radar_items.append({
-            "label": label,
+            "label": label[:24],
             "score": clamp_int(radar_item.get("score"), 0, 100, 80),
         })
 
@@ -96,15 +103,15 @@ def normalize_skills(skills, allowed_source_names):
         if not isinstance(skill, dict):
             continue
 
-        title = str(skill.get("title") or "").strip()
-        description = str(skill.get("description") or "").strip()
+        title = clean_visible_text(skill.get("title"), 80, allowed_source_names)
+        description = clean_visible_text(skill.get("description"), 700, allowed_source_names)
 
         if not title or not description:
             continue
 
         normalized_skills.append({
-            "title": title[:80],
-            "description": description[:700],
+            "title": title,
+            "description": description,
             "evidence": ", ".join(normalize_markdown_evidence(skill.get("evidence"), allowed_source_names, 3)),
         })
 
@@ -121,18 +128,18 @@ def normalize_domains(domains, allowed_source_names):
         if not isinstance(domain, dict):
             continue
 
-        domain_name = str(domain.get("domain") or "").strip()
-        headline = str(domain.get("headline") or "").strip()
-        reason = str(domain.get("reason") or "").strip()
+        domain_name = clean_ai_domain_card_title(domain.get("domain"), allowed_source_names)
+        headline = clean_visible_text(domain.get("headline"), 140, allowed_source_names)
+        reason = clean_visible_text(domain.get("reason"), 900, allowed_source_names)
 
         if not domain_name or not headline or not reason:
             continue
 
         normalized_domains.append({
             "rank": clamp_int(domain.get("rank"), 1, 3, domain_index),
-            "domain": domain_name[:80],
-            "headline": headline[:140],
-            "reason": reason[:900],
+            "domain": domain_name,
+            "headline": headline,
+            "reason": reason,
             "evidence": normalize_markdown_evidence(domain.get("evidence"), allowed_source_names, 3),
         })
 
@@ -140,7 +147,7 @@ def normalize_domains(domains, allowed_source_names):
     return normalized_domains
 
 
-def normalize_skill_keyword_groups(skill_keyword_groups):
+def normalize_skill_keyword_groups(skill_keyword_groups, allowed_source_names):
     if not isinstance(skill_keyword_groups, list):
         return []
 
@@ -150,10 +157,10 @@ def normalize_skill_keyword_groups(skill_keyword_groups):
         if not isinstance(skill_keyword_group, dict):
             continue
 
-        category = str(skill_keyword_group.get("category") or "").strip()
+        category = clean_skill_keyword_group_title(skill_keyword_group.get("category"), allowed_source_names)
         keywords = normalize_skill_keywords(skill_keyword_group.get("keywords"))
 
-        if category in SKILL_KEYWORD_GROUP_LABELS and keywords:
+        if category and keywords:
             normalized_groups.append({
                 "category": category,
                 "keywords": keywords,
@@ -174,20 +181,19 @@ def normalize_skill_keywords(skill_keywords):
         if not isinstance(skill_keyword, dict):
             continue
 
-        label = str(skill_keyword.get("label") or "").strip()
-
-        if not label:
-            continue
-
         tone = str(skill_keyword.get("tone") or "").strip()
         strength = str(skill_keyword.get("strength") or "").strip()
 
-        normalized_keywords.append({
-            "label": label[:32],
-            "tone": tone if tone in allowed_tones else "blue",
-            "strength": strength if strength in allowed_strengths else "medium",
-            "weight": normalize_keyword_weight(skill_keyword.get("weight")),
-        })
+        for label in split_atomic_keyword_labels(skill_keyword.get("label")):
+            if not label:
+                continue
+
+            normalized_keywords.append({
+                "label": label[:56],
+                "tone": tone if tone in allowed_tones else "blue",
+                "strength": strength if strength in allowed_strengths else "medium",
+                "weight": normalize_keyword_weight(skill_keyword.get("weight")),
+            })
 
     normalized_keywords.sort(key=lambda keyword: keyword["weight"], reverse=True)
     return normalized_keywords
@@ -259,10 +265,10 @@ def normalize_markdown_source_name(source_name):
     return source_text if source_text.lower().endswith(".md") else ""
 
 
-def clean_summary_description(description):
+def clean_summary_description(description, allowed_source_names):
     summary_description = str(description or "").strip()
     summary_description = re.sub(r"^\s*(?:총평|종합\s*평가|종합평가|overall)\s*[:：]\s*", "", summary_description, flags=re.IGNORECASE)
-    return summary_description.strip()
+    return clean_visible_text(summary_description, source_names=allowed_source_names)
 
 
 def normalize_keyword_weight(weight):
