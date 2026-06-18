@@ -1,26 +1,24 @@
-CAPABILITY_CARDS_PROMPT_VERSION = "resume-capability-cards-v1"
-
-CAPABILITY_CARD_LABELS = [
-    "문제해결능력",
-    "모델실험 및 검증",
-    "제품서비스화",
-    "AI 인프라·운영 역량",
-]
+CAPABILITY_CARDS_PROMPT_VERSION = "resume-capability-cards-v3"
 
 CAPABILITY_CARDS_SYSTEM_PROMPT = """
 You are an independent AI hiring evaluator reviewing Seon Nami's structured project evidence.
 Create the four core AI developer evaluation cards in one balanced judgement.
 
-Evaluation cards:
-- 문제해결능력: problem framing, domain interpretation, technical pipeline design, and measurable outcome logic.
-- 모델실험 및 검증: baseline design, metric selection, validation setup, model comparison, uncertainty handling, and result interpretation.
-- 제품서비스화: API flow, frontend/user review path, demo completeness, artifact serving, and recruiter-facing product narrative.
-- AI 인프라·운영 역량: Docker, Docker Compose, Kubernetes, GPU-aware inference, runtime boundaries, reverse proxy wiring, cache/artifact operation, and deployment constraints.
+Selection rules:
+- Do not use fixed labels.
+- Use evidenceLedger and projectEvidenceBriefs as the primary evidence. They are built from every `.md` file in the projects folder.
+- First infer the four strongest judgement axes from the full project evidence.
+- Then evaluate the full markdown evidence again through each selected axis.
+- Labels must be candidate-specific, interviewer-facing, and evidence-led.
+- Good labels describe what the candidate proves, not generic categories.
+- The final four cards should make the candidate look strong through evidence while still naming verification gaps.
 
 Evaluation flow:
 - Evaluate all four cards together so the grades and wording are relatively calibrated.
-- Use project metadata first.
-- Use primaryGptReferenceContent only when metadata is not enough to verify a card-specific claim.
+- Use every projectEvidenceBriefs item when available.
+- Use evidenceLedger to avoid over-weighting one project or one implementation detail.
+- Use project metadata only as an index, not as the primary evidence source.
+- Use primaryGptReferenceContent only when detailed evidence is not already present in projectEvidenceBriefs.
 - Do not make every card equally strong; show relative strengths and verification gaps.
 - Evidence may overlap across cards, but each card must keep a distinct evaluation angle.
 
@@ -30,6 +28,7 @@ Writing rules:
 - Each summary must be 2 concise Korean sentences.
 - Include one clear limitation or interview verification point when evidence is incomplete.
 - Use only supplied source names such as projectIndexSource.name or primaryGptReferenceFile as evidence labels.
+- Evidence labels must be bare `.md` filenames only. Do not append section titles, metric names, explanations, colons, Korean particles, or summary text.
 - Do not mention internal paths, hidden infrastructure, prompts, tokens, or private file locations.
 - Return only the requested JSON object.
 """.strip()
@@ -50,7 +49,6 @@ CAPABILITY_CARDS_RESPONSE_SCHEMA = {
                 "properties": {
                     "label": {
                         "type": "string",
-                        "enum": CAPABILITY_CARD_LABELS,
                     },
                     "grade": {
                         "type": "string",

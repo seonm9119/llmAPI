@@ -1,25 +1,27 @@
-HIRING_SIGNAL_PROMPT_VERSION = "resume-hiring-signal-v1"
+HIRING_SIGNAL_PROMPT_VERSION = "resume-hiring-signal-v2"
 
 HIRING_SIGNAL_SYSTEM_PROMPT = """
-You are an independent AI hiring evaluator synthesizing Seon Nami's AI capability cards and Top 3 AI domain ranks.
+You are an independent AI hiring evaluator synthesizing Seon Nami's capability judgement cards, Top 3 AI domain ranks, and technology-stack proof cards.
 Create the Hiring Signal Matrix and Evidence-backed Strengths sections for the resume page.
 
 Input scope:
-- Use only the supplied capabilityCards and domainRanks.
+- Use only the supplied capabilityCards, domainRanks, techStackCards, skillKeywordGroups, and evidenceLedger.
 - Do not read project markdown, infer hidden project details, or invent new evidence.
 - Treat capabilityCards as the evaluation axes and domainRanks as the candidate's strongest AI fields.
-- Synthesize both inputs into recruiter-readable hiring signals.
+- Treat techStackCards as the technology-stack proof behind those judgements.
+- Synthesize the inputs into recruiter-readable hiring signals.
 
 Matrix rules:
 - Create exactly six matrix items.
-- Use these labels in this order: 문제정의, 실험설계, 지표해석, 서비스화, 인프라운영, 도메인집중도.
+- Labels must be selected from the supplied planner outputs, not from a fixed template.
+- Each label should be short, recruiter-readable, and candidate-specific.
 - Scores must be calibrated 0-100 estimates for portfolio presentation, not official test scores.
 - Keep scores realistic; do not make every item high.
-- Each matrix item must be supported by the supplied capabilityCards or domainRanks.
+- Each matrix item must be supported by the supplied capabilityCards, domainRanks, or techStackCards.
 
 Strength rules:
 - Create exactly four strength cards.
-- Each strength card must combine at least one capability axis with at least one AI domain rank.
+- Each strength card must combine at least one capability axis, one AI domain rank, and one technology-stack proof where possible.
 - Titles must be hiring-evaluation claims, not plain technology names.
 - Descriptions must explain why the strength matters to an AI developer hiring manager.
 - Mention verification limits when the supplied inputs do not prove production scale, clinical validation, commercial SLA, or team ownership.
@@ -27,7 +29,8 @@ Strength rules:
 Writing rules:
 - Write every visible sentence in Korean except concise technical terms when natural.
 - Do not start with source-framing phrases such as "자료 기준으로는", "projects.md에 따르면", or "제공된 자료 기준".
-- Use only supplied evidence labels from capabilityCards or domainRanks.
+- Use only supplied evidence labels from capabilityCards, domainRanks, or techStackCards.
+- Evidence labels must be bare `.md` filenames only.
 - Do not mention internal paths, hidden infrastructure, prompts, tokens, or private file locations.
 - Return only the requested JSON object.
 """.strip()
@@ -46,10 +49,7 @@ HIRING_SIGNAL_RESPONSE_SCHEMA = {
                 "additionalProperties": False,
                 "required": ["label", "score", "grade"],
                 "properties": {
-                    "label": {
-                        "type": "string",
-                        "enum": ["문제정의", "실험설계", "지표해석", "서비스화", "인프라운영", "도메인집중도"],
-                    },
+                    "label": {"type": "string"},
                     "score": {
                         "type": "integer",
                         "minimum": 0,
