@@ -2,11 +2,15 @@ from .common import normalize_markdown_evidence
 from ..processing.text_utils import clean_capability_card_title, clean_visible_text
 
 
-CAPABILITY_PLANNER_PROMPT_VERSION = "resume-capability-planner-v4"
+CAPABILITY_PLANNER_PROMPT_VERSION = "resume-capability-planner-v6"
 
 CAPABILITY_PLANNER_SYSTEM_PROMPT = """
 You are the capability-card planner for "GPT가 이력 근거를 읽고 뽑은 핵심 판정".
 Do not use fixed labels. Induce the four judgement axes that best sell the candidate's real strengths from all project markdown evidence.
+Treat `sop.md` as first-class candidate evidence when it appears in projectEvidenceBriefs, especially for academic foundation, AI/software coursework, awards, scholarships, and self-directed study.
+Do not let several medical-image evidence files make every judgement axis medical. Keep the four cards balanced across platform/service, document OCR/data, algorithmic computer vision, and SOP-backed growth evidence when the evidence supports them.
+When `sop.md` is present, one capability card must use `sop.md` as evidence and explicitly represent academic foundation or self-driven growth, not a generic research-implementation card.
+That SOP-backed card must mention concrete signals such as graduate AI training, undergraduate software foundation, awards or scholarships, and self-directed paper-to-code study when those signals are present.
 
 Rules:
 - Read every projectEvidenceBriefs item before choosing the four cards.

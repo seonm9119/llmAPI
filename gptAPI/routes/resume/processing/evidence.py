@@ -4,8 +4,8 @@ import re
 MARKDOWN_TITLE_PATTERN = re.compile(r"^\s*#\s+(.+?)\s*$")
 MARKDOWN_SECTION_PATTERN = re.compile(r"^\s*#{2,3}\s+(.+?)\s*$")
 TERM_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9.+#_-]{1,}|[가-힣]{2,}")
-MAX_EVIDENCE_BRIEF_CHARS = 4500
-MAX_EVIDENCE_BRIEF_LINES = 70
+MAX_EVIDENCE_BRIEF_CHARS = 6500
+MAX_EVIDENCE_BRIEF_LINES = 90
 MAX_PROJECT_TERMS = 24
 MAX_REPEATED_TERMS = 60
 
@@ -28,6 +28,19 @@ EVIDENCE_BRIEF_SECTION_KEYWORDS = [
     "architecture",
     "dataset",
     "service flow",
+    "summary",
+    "education",
+    "academic background",
+    "relevant coursework",
+    "coursework",
+    "self-directed learning",
+    "research outputs",
+    "awards",
+    "awards and recognition",
+    "certifications",
+    "activities",
+    "strengths",
+    "interview positioning",
 ]
 
 EVIDENCE_BRIEF_LINE_KEYWORDS = [
@@ -63,6 +76,25 @@ EVIDENCE_BRIEF_LINE_KEYWORDS = [
     "api",
     "framework",
     "library",
+    "education",
+    "degree",
+    "master",
+    "master's",
+    "bachelor",
+    "bachelor's",
+    "gpa",
+    "credits",
+    "coursework",
+    "award",
+    "scholarship",
+    "self-directed",
+    "paper-reading",
+    "pytorch",
+    "thesis",
+    "publication",
+    "publications",
+    "gist",
+    "silla",
 ]
 
 TERM_STOPWORDS = {

@@ -2,7 +2,7 @@ from .common import clamp_int, normalize_markdown_evidence
 from ..processing.text_utils import clean_ai_domain_card_title, clean_visible_text
 
 
-DOMAIN_PLANNER_PROMPT_VERSION = "resume-domain-planner-v4"
+DOMAIN_PLANNER_PROMPT_VERSION = "resume-domain-planner-v6"
 
 DOMAIN_PLANNER_SYSTEM_PROMPT = """
 You are the domain-rank planner for "AI 분야별 강점".
@@ -22,6 +22,10 @@ Rules:
 - Step 2: evaluate the full markdown evidence again through each induced cluster.
 - Each domain card title must stay within 22 Korean characters.
 - Rank the domains by evidence strength, not by what sounds fashionable.
+- Do not let repeated files in one subdomain outweigh broader platform, document AI, algorithmic CV, or service-facing proof by count alone.
+- Rank medical imaging first only when it has the strongest combined implementation depth, evaluation quality, service-facing proof, and interviewer relevance.
+- Prefer cross-project platform, orchestration, and serviceization strengths over a narrow subdomain when they connect multiple models, demos, servers, and deployment workflows.
+- Treat SOP evidence as candidate-foundation context, not as an AI/domain card.
 - Do not use examples, prelisted labels, or server keyword buckets as domain candidates.
 - Headlines must sound like hiring judgement, not feature labels.
 - Each reason must be one strong Korean paragraph, not a bullet list or labelled fields.

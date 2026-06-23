@@ -2,7 +2,7 @@ from .common import normalize_string_list
 from ..processing.text_utils import clean_summary_title, clean_visible_text
 
 
-SUMMARY_PLANNER_PROMPT_VERSION = "resume-summary-planner-v7"
+SUMMARY_PLANNER_PROMPT_VERSION = "resume-summary-planner-v9"
 
 SUMMARY_PLANNER_SYSTEM_PROMPT = """
 You are the summary planner for a resume page that sells Seon Nami's AI engineering strengths to interviewers.
@@ -12,6 +12,9 @@ Rules:
 - Read capabilityCards, domainRanks, techStackCards, radarAxes, evidenceLedger, and projectEvidenceBriefs before planning.
 - Treat capabilityCards as "how to judge the candidate", domainRanks as "where to position the candidate", techStackCards as "which stacks prove that judgement", and radarAxes as the compact competency map.
 - The summary must make the candidate look strong through evidence, not generic praise.
+- If `sop.md` appears in the evidence, reserve one visible candidate-level sentence for academic foundation, AI/software coursework, awards or scholarships, and self-directed study.
+- Do not satisfy the SOP rule with a generic phrase such as research-based implementation; use concrete SOP signals such as GIST AI graduate training, undergraduate software foundation, awards, scholarships, or paper-to-code self-study when present.
+- Do not let medical imaging become the default identity unless it dominates capabilityCards, domainRanks, techStackCards, and projectEvidenceBriefs together.
 - Plan an impactful 9-11 line overall judgement, not a short hero subtitle.
 - The title must be one high-impact identity sentence that defines the person through the induced capability, domain, and technology evidence.
 - The title must stay within 32 Korean characters.

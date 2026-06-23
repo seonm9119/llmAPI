@@ -1,5 +1,5 @@
 OPENAI_GENERATED_PROVIDER = "openai-generated"
-REPORT_CACHE_VERSION = "resume-report-openai-cache-v2"
+REPORT_CACHE_VERSION = "resume-report-openai-cache-v4"
 
 REPORT_SECTION_NAMES = ["summary", "capabilities", "radar", "skills", "domains", "skillKeywords", "sources"]
 
@@ -15,6 +15,8 @@ RESUME_EVALUATION_FRAME = {
         "AI 세부 분야는 프로젝트 수, 구현 깊이, 문제정의, 평가 방식, 서비스화 증거, 설명 가능성을 함께 보고 귀납한다.",
         "프롬프트의 예시나 서버의 키워드 버킷이 아니라 projectEvidenceBriefs의 실제 근거가 분야명과 순위를 결정해야 한다.",
         "상세 근거가 더 많고 문제해결·평가 깊이가 큰 분야가 제목과 총평에서 더 큰 비중을 가져야 한다.",
+        "sop.md는 AI 세부 분야 카드가 아니라 학력, 이수 과목, 수상, 장학, 자기주도 학습을 증명하는 후보자 기반 근거로 총평과 역량 판정에 반영한다.",
+        "의료영상 파일이 여러 개 있어도 파일 개수만으로 전체 정체성을 의료 중심으로 고정하지 않고 서비스화, 문서 OCR, 알고리즘 구현, 인프라 운영 근거와 함께 균형 있게 판단한다.",
         "직무 역량 축, 레이더 축, 기술 클러스터명도 고정 후보 없이 OpenAI가 직접 생성한다.",
     ],
 }
@@ -58,6 +60,8 @@ def build_output_guidance():
         "evidenceLabels": "Every evidence field must contain only bare markdown filenames ending in .md.",
         "titleStyle": "The title should be hiring-level, no longer than 32 Korean characters, and should not contain LLM 초안, Projection, gate, 사전집, 라벨, key, or signal.",
         "summaryFinalSentence": "The summary description's final sentence must start with 종합적으로 and must be the only sentence using 종합적으로. It should compress level, strongest identity, and best-fit roles into one decisive hiring judgement.",
+        "sopFoundation": "When sop.md is present, include one visible summary sentence with concrete academic and growth signals such as GIST AI graduate training, undergraduate software foundation, awards, scholarships, and self-directed paper-to-code study. Treat it as candidate-level proof, not an AI domain card.",
+        "domainBalance": "Do not over-index on medical imaging only because several medical markdown files exist. Balance it with platform/service, document OCR, algorithmic CV/image processing, infrastructure operation, and SOP-backed growth evidence when supported.",
         "visibleProse": "Keep visible prose interviewer-facing. Avoid source-reading meta phrases, the wording 이 사람, and low-level implementation jargon when a hiring-level phrase is enough. Do not write 면접에서 확인해야 합니다, 면접에서 확인이 필요합니다, or any interviewer-homework phrasing.",
         "qualityTarget": "The output should read like a strong GPT hiring evaluator wrote it after reading every project markdown file, with domain emphasis proportional to evidence depth.",
     }

@@ -266,6 +266,9 @@ Writing requirements:
 - Summary description must be one impactful paragraph with exactly 9 Korean sentences and 1050-1250 Korean characters.
 - Summary description must not start with labels such as "총평:", "종합평가:", "Overall:", or any section heading.
 - Summary description must cover the strongest AI/domain clusters induced in evaluationPlan.domainRanks, weighted by evidence depth.
+- When sop.md appears in the supplied sources or evidence, summary description must dedicate one sentence to academic foundation, AI/software coursework, awards or scholarships, and self-directed study evidence.
+- That SOP sentence must use concrete signals from the source, such as GIST AI graduate training, undergraduate software foundation, awards, scholarships, and paper-to-code self-study when present.
+- Do not make the title, summary, capability set, or domain ordering read as medical-first unless the induced evidence clearly dominates every other cluster. Balance medical imaging with service/platform, document OCR, algorithmic computer vision, infrastructure operation, and SOP-backed growth evidence when present.
 - Summary description must include overall judgement, strongest area, primary domain evidence, secondary domain evidence, tertiary domain evidence when meaningful, result-delivery pattern when supported, unusually good problem framing, weak points, level judgement, best-fit roles, and one-line evaluation.
 - The final sentence of the summary description must start with "종합적으로 " and must compress the candidate's level, strongest identity, and best-fit roles into one decisive hiring judgement.
 - Do not use "종합적으로" before the final sentence.
