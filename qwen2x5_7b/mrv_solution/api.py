@@ -1,10 +1,9 @@
-import os
 import re
 
-import httpx
 from fastapi import Body, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from ollama_client import call_ollama_chat, get_ollama_base_url, get_ollama_text_model_id
 from prompts import get_prompt_definition
 
 
@@ -25,7 +24,6 @@ app.add_middleware(
 )
 
 EMPTY_VALUE = "—"
-QWEN_DEFAULT_BASE_URL = "http://qwen2x5-7b:8000"
 
 
 @app.get("/health")
@@ -33,7 +31,8 @@ def health():
     return {
         "service": "qwen2x5-mrv-solution-api",
         "status": "ok",
-        "qwen_base_url": get_qwen_base_url(),
+        "ollama_base_url": get_ollama_base_url(),
+        "model": get_ollama_text_model_id(),
     }
 
 
@@ -55,7 +54,7 @@ async def resolve_mrv_solution_llm(payload=Body(default=None)):
     ]
 
     try:
-        generated_text = await call_qwen(
+        generated_text = await call_ollama_chat(
             messages,
             max_tokens=prompt_definition.get("max_tokens", 512),
             temperature=prompt_definition.get("temperature", 0.3),
@@ -78,61 +77,6 @@ async def resolve_mrv_solution_llm(payload=Body(default=None)):
         "prompt_key": prompt_key,
         "value": response_text or EMPTY_VALUE,
     }
-
-
-def get_qwen_base_url():
-    return os.environ.get("QWEN_BASE_URL", QWEN_DEFAULT_BASE_URL).strip().rstrip("/")
-
-
-def get_qwen_timeout_seconds():
-    timeout_seconds = os.environ.get("QWEN_TIMEOUT_SECONDS", "180").strip()
-    try:
-        return float(timeout_seconds)
-    except ValueError:
-        return 180
-
-
-async def call_qwen(messages, max_tokens=1400, temperature=0.2):
-    request_body = {
-        "model": os.environ.get("QWEN_MODEL_ID", "qwen2.5-7b"),
-        "messages": messages,
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-        "stream": False,
-    }
-    async with httpx.AsyncClient(timeout=get_qwen_timeout_seconds()) as client:
-        response = await client.post(
-            f"{get_qwen_base_url()}/v1/chat/completions",
-            json=request_body,
-            headers={"Content-Type": "application/json"},
-        )
-        response.raise_for_status()
-        return extract_llm_text(response.json())
-
-
-def extract_llm_text(response_payload):
-    if not isinstance(response_payload, dict):
-        return ""
-
-    choices = response_payload.get("choices")
-    if isinstance(choices, list) and choices:
-        first_choice = choices[0]
-        if isinstance(first_choice, dict):
-            message = first_choice.get("message")
-            if isinstance(message, dict):
-                return str(message.get("content") or "").strip()
-            return str(first_choice.get("text") or "").strip()
-
-    for key in ("content", "response", "text", "message"):
-        candidate_content = response_payload.get(key)
-        if isinstance(candidate_content, str):
-            return candidate_content.strip()
-        if isinstance(candidate_content, dict):
-            nested_content = candidate_content.get("content")
-            if isinstance(nested_content, str):
-                return nested_content.strip()
-
-    return ""
 
 
 def parse_llm_field(tag):

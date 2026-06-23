@@ -1,0 +1,78 @@
+name: llm-api
+
+services:
+  ollama:
+    image: ollama:latest
+    build:
+      context: .
+      dockerfile: ollama.Dockerfile
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_KEEP_ALIVE: 10m
+    networks:
+      - model-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  llm-api:
+    image: llm-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: llm-api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8003:8008"
+      - "127.0.0.1:8006:8008"
+      - "127.0.0.1:8007:8008"
+      - "127.0.0.1:8008:8008"
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_TEXT_MODEL_ID: qwen2.5:7b
+      OLLAMA_VLM_MODEL_ID: qwen2.5vl:3b
+      OLLAMA_TIMEOUT_SECONDS: 240
+      OLLAMA_TEXT_TIMEOUT_SECONDS: 180
+      VLM_NUM_PREDICT: 384
+      VLM_MAX_KEYS: 80
+      VLM_MAX_IMAGE_MB: 12
+      KEYVALUE_MAX_CANDIDATES: 60
+    volumes:
+      - ./gptAPI/cache:/app/gptAPI/cache
+      - ./gptAPI/gpt_analysis:/app/gptAPI/gpt_analysis:ro
+    networks:
+      - model-network
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8008/health').read()\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+networks:
+  model-network:
+    external: true
+
+volumes:
+  ollama-models:
+    external: true
+    name: ollama-models
