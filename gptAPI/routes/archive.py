@@ -24,17 +24,17 @@ def get_default_archive_source_path():
 
 
 def get_default_archive_readme_source_path():
-    container_readme_source_path = Path("/app/gpt_analysis/README")
+    container_archive_readme_source_path = Path("/app/gpt_analysis/archive/README")
 
-    if container_readme_source_path.exists():
-        return container_readme_source_path
+    if container_archive_readme_source_path.exists():
+        return container_archive_readme_source_path
 
-    project_readme_source_path = Path(__file__).resolve().parents[1] / "gpt_analysis" / "README"
+    project_archive_readme_source_path = Path(__file__).resolve().parents[1] / "gpt_analysis" / "archive" / "README"
 
-    if project_readme_source_path.exists():
-        return project_readme_source_path
+    if project_archive_readme_source_path.exists():
+        return project_archive_readme_source_path
 
-    return container_readme_source_path
+    return container_archive_readme_source_path
 
 
 ARCHIVE_TEXT_EXTENSIONS = {
@@ -240,7 +240,7 @@ def read_visible_archive_root():
 
     return {
         "success": True,
-        "rootPath": str(ARCHIVE_SOURCE_PATH.parent),
+        "rootPath": str(ARCHIVE_SOURCE_PATH),
         "currentPath": "",
         "parentPath": None,
         "breadcrumbs": build_archive_root_breadcrumbs(),
