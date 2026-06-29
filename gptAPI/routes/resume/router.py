@@ -1,3 +1,4 @@
+import asyncio
 import re
 
 from fastapi import APIRouter, HTTPException, Request
@@ -645,7 +646,8 @@ async def generate_resume_report():
     cache_key = build_report_cache_key(resume_report_context, GPT_MODEL, REPORT_PROMPT_VERSION)
 
     try:
-        generation_result = generate_and_cache_resume_report(
+        generation_result = await asyncio.to_thread(
+            generate_and_cache_resume_report,
             resume_report_context,
             cache_key,
             GPT_MODEL,

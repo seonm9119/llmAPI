@@ -12,7 +12,7 @@ from ..processing.text_utils import (
 )
 
 
-REPORT_CACHE_PATH = Path(__file__).resolve().parents[2] / "cache" / "resume_report_cache.json"
+REPORT_CACHE_PATH = Path(__file__).resolve().parents[3] / "cache" / "resume_report_cache.json"
 ALLOWED_CACHE_PROVIDERS = {OPENAI_GENERATED_PROVIDER}
 
 

@@ -83,6 +83,7 @@ def include_api_file_routes(module_name, api_file_path, import_dirs):
 
 
 include_api_file_routes("qwen2x5_vlm_api", QWEN_VLM_DIR / "api.py", [QWEN_VLM_DIR])
+include_api_file_routes("gpt_keyvalue_api", GPT_API_DIR / "keyvalue" / "api.py", [GPT_API_DIR / "keyvalue", GPT_API_DIR])
 include_api_file_routes(
     "qwen2x5_keyvalue_api",
     QWEN_7B_DIR / "keyvalue" / "api.py",
